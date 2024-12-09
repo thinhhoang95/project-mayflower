@@ -34,5 +34,4 @@ class ContextEncoder(nn.Module):
         src_projected = self.input_projection(src_scaled) * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32))
         output = self.transformer_encoder(src_projected, mask=mask)
 
-        # Return only the last output of the sequence
-        return output[:, -1, :]
+        return output # shape: (batch_size, seq_len, d_model)

@@ -13,13 +13,9 @@ from torch.utils.data import DataLoader, Dataset, ConcatDataset
 
 from utils.loader import create_data_loaders, create_attention_mask
 
-# DataLoader for training
-train_loader, scaler = create_data_loaders(DATA_DIR, batch_size)
-# Input: (batch_size, 64, 2)
-
 import torch
 from model.context_encoder import ContextEncoder
-from model.cfm_model import CFMModel
+from model.generative_flow import CFMModel, loss_fn 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -30,7 +26,7 @@ context_encoder = ContextEncoder(
     nhead=8,
     num_layers=6,
     dim_feedforward=512,
-    scaler=scaler,
+    scaler=None,
     dropout=0.1
 ).to(device)
 
@@ -38,11 +34,27 @@ context_encoder = ContextEncoder(
 cfm_model = CFMModel(
     input_dim=2,  # Assuming 2D coordinates (lat, lon)
     context_dim=128,  # Matching the output dimension of ContextEncoder
-    hidden_dim=256,  # You can adjust this as needed
-    num_blocks=4  # You can adjust this as needed
+    hidden_dim=256,  
+    num_blocks=4 
 ).to(device)
 
-def train_model(optimizer, loss_fn):
+# Print model summaries
+print("\nContext Encoder Architecture:")
+print(context_encoder)
+print("\nTotal parameters in Context Encoder:", sum(p.numel() for p in context_encoder.parameters()))
+
+print("\nCFM Model Architecture:") 
+print(cfm_model)
+print("\nTotal parameters in CFM Model:", sum(p.numel() for p in cfm_model.parameters()))
+
+print("\nTotal parameters in both models:", sum(p.numel() for p in context_encoder.parameters()) + sum(p.numel() for p in cfm_model.parameters()))
+
+# DataLoader for training
+train_loader, scaler = create_data_loaders(DATA_DIR, batch_size)
+# Input: (batch_size, 64, 2)
+
+
+def train_model(optimizer):
     for epoch in range(NUM_EPOCHS):
         for batch_idx, data in enumerate(train_loader):
             data = data.to(device)
@@ -65,32 +77,25 @@ def train_model(optimizer, loss_fn):
             # mask shape: (batch_size, seq_len - 1, seq_len - 1)
             mask = mask[:, :, :-1, :-1]
 
+            # TRANSFORMER CONTEXT PASS ================================
+
             # Forward pass with mask to obtain context embedding
-            encoded_context = context_encoder(input_seq, mask=mask)
-            # Context size: (batch_size, d_model), e.g., (batch_size, 128)
+            encoded_context = context_encoder(input_seq, mask=mask) # shape: (batch_size, seq_len - 1, d_model)
 
-            # Generate a noise embedding of size input 
-            x0 = torch.randn(batch_size, input_seq.shape[-1]).to(device)
+            # Generate noise embedding with same shape as input sequence
+            x0 = torch.randn_like(input_seq)  # shape: (batch_size, seq_len - 1, 2)
 
-            # Uniformly sample a time step between 0 and 1
+            # Uniformly sample a time step between 0 and 1 of shape (batch_size, seq_len - 1)
+            t = torch.rand((input_seq.shape[0], input_seq.shape[1], 1), device=device)  # shape: (batch_size, seq_len - 1, 1)
+
+            # CONDITIONAL FLOW MODEL PASS ================================
+            x1 = target_seq
             t = torch.rand((x0.shape[0], 1), device=x0.device)
-
-            # Compute the loss
             optimizer.zero_grad()
-            loss = loss_fn(cfm_model, x0, target_seq, t, encoded_context)
+            loss = loss_fn(cfm_model, x0, x1, t, encoded_context)
             loss.backward()
             optimizer.step()
-
-            # Pass the noise with the context embedding through the generative flow model
-            # Assuming you want to condition on the encoded context
-            # Concatenate noise with context embedding along the last dimension
-            # x0_with_context shape: (batch_size, seq_len - 1, d_model + 2)
-            x0_with_context = torch.cat([x0.unsqueeze(1).repeat(1, input_seq.shape[1], 1), encoded_context], dim=-1)
-
-            # Use generative flow model to sample the next coordinate
-            # Input: (batch_size, seq_len, d_model)
-            # Output: (batch_size, seq_len, 2)
-            # You might need to adjust the sampling function based on your specific needs
-            sampled_coords = cfm_model(x0_with_context, encoded_context)
+            
+        print(f'Epoch {epoch+1}, Loss: {loss.item()}')
 
 
