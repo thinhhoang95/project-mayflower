@@ -40,7 +40,7 @@ def create_data_loaders(data_dir, batch_size):
     
     # Now load all chunks and apply scaling
     datasets = []
-    for i in range(1, 11):
+    for i in range(1, 2):
         dataset = ChunkedDataset(data_dir, i)
         # Apply scaling to each chunk
         scaled_data = dataset.data.reshape(-1, 2)
@@ -74,8 +74,9 @@ def create_attention_mask(data, num_heads):
     
     # 4. Expand mask for multi-head attention
     # Assuming you have 'num_heads' defined
-    mask = mask.unsqueeze(1).repeat(1, num_heads, 1, 1)  # Shape becomes (batch_size, num_heads, seq_len, seq_len)
+    # mask = mask.unsqueeze(1).repeat(1, num_heads, 1, 1)  # Shape becomes (batch_size, num_heads, seq_len, seq_len)
 
+    # Remove the above line and return the 3-D mask directly
     return mask
 
 # Example usage (assuming you have batch_size defined in your .env file)

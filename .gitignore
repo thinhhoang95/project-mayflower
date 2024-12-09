@@ -59,6 +59,7 @@ poetry.lock
 
 # Dataset
 data
+data_mini
 
 # macOS system files
 ._*

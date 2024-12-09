@@ -100,7 +100,7 @@ def train_model(optimizer):
 
             # Adjust mask for input sequence length
             # mask shape: (batch_size, seq_len - 1, seq_len - 1)
-            mask = mask[:, :, :-1, :-1]
+            mask = mask[:, :-1, :-1]
 
             # TRANSFORMER CONTEXT PASS ================================
 
