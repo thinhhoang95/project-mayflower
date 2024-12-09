@@ -15,7 +15,7 @@ from utils.loader import create_data_loaders, create_attention_mask
 
 import torch
 from model.context_encoder import ContextEncoder
-from model.generative_flow import CFMModel, loss_fn 
+from model.conditional_flow import CFMModel, loss_fn 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -38,6 +38,28 @@ cfm_model = CFMModel(
     num_blocks=4 
 ).to(device)
 
+# Initialize optimizer
+# Initialize optimizer with standard transformer learning rate and betas
+optimizer = torch.optim.AdamW([
+    {'params': context_encoder.parameters()},
+    {'params': cfm_model.parameters()}
+], lr=1e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01)
+
+# Learning rate scheduler with warmup
+from torch.optim.lr_scheduler import LambdaLR
+
+def get_lr_schedule(optimizer, warmup_steps=4000):
+    def lr_lambda(step):
+        # Linear warmup followed by inverse square root decay
+        if step < warmup_steps:
+            return float(step) / float(max(1, warmup_steps))
+        return (warmup_steps ** 0.5) * (step ** -0.5)
+    
+    return LambdaLR(optimizer, lr_lambda)
+
+scheduler = get_lr_schedule(optimizer)
+
+
 # Print model summaries
 print("\nContext Encoder Architecture:")
 print(context_encoder)
@@ -53,6 +75,9 @@ print("\nTotal parameters in both models:", sum(p.numel() for p in context_encod
 train_loader, scaler = create_data_loaders(DATA_DIR, batch_size)
 # Input: (batch_size, 64, 2)
 
+# Set scaler in context encoder
+context_encoder.set_scaler(scaler)
+
 
 def train_model(optimizer):
     for epoch in range(NUM_EPOCHS):
@@ -60,7 +85,7 @@ def train_model(optimizer):
             data = data.to(device)
 
             # Generate attention mask
-            mask = create_attention_mask(data)
+            mask = create_attention_mask(data, num_heads=8) # must match nhead in ContextEncoder
 
             # Autoregressive training:
             # - Input:  [(lat1, lon1), (lat2, lon2), ...]
@@ -98,4 +123,7 @@ def train_model(optimizer):
             
         print(f'Epoch {epoch+1}, Loss: {loss.item()}')
 
+if __name__ == '__main__':
+    print(f'Training model with {NUM_EPOCHS} epochs')
+    train_model(optimizer)
 

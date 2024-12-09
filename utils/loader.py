@@ -53,7 +53,7 @@ def create_data_loaders(data_dir, batch_size):
     data_loader = DataLoader(combined_dataset, batch_size=batch_size, shuffle=True)
     return data_loader, scaler
 
-def create_attention_mask(data):
+def create_attention_mask(data, num_heads):
     # 1. Mask NaN values (padding)
     # Assuming data is a PyTorch tensor
     nan_mask = torch.isnan(data).any(dim=-1)  # Check for NaNs along the last dimension (coordinate dimension)

@@ -17,6 +17,15 @@ class ContextEncoder(nn.Module):
         
         self.d_model = d_model
 
+    def set_scaler(self, scaler):
+        """
+        Sets the scaler used for normalizing input coordinates.
+        
+        Args:
+            scaler: A fitted StandardScaler instance used to normalize coordinates
+        """
+        self.scaler = scaler
+
     def forward(self, src, mask=None):
         # Reshape to 2D for scaling
         batch_size, seq_len, feat_dim = src.shape
@@ -28,7 +37,7 @@ class ContextEncoder(nn.Module):
         ).to(src.device)
         
         # Reshape back to 3D
-        src_scaled = src_scaled.reshape(batch_size, seq_len, feat_dim)
+        src_scaled = src_scaled.reshape(batch_size, seq_len, feat_dim) # shape: (batch_size, seq_len, feat_dim) = (batch_size, 63, 2)
         
         # Project coordinates to d_model dimensions instead of using embedding
         src_projected = self.input_projection(src_scaled) * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32))
