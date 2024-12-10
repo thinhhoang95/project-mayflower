@@ -40,7 +40,10 @@ class ContextEncoder(nn.Module):
         src_scaled = src_scaled.reshape(batch_size, seq_len, feat_dim) # shape: (batch_size, seq_len, feat_dim) = (batch_size, 63, 2)
         
         # Project coordinates to d_model dimensions instead of using embedding
-        src_projected = self.input_projection(src_scaled) * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32))
+        src_projected = self.input_projection(src_scaled) * torch.sqrt(torch.tensor(self.d_model, dtype=torch.float32)) # shape: (batch_size, seq_len, d_model)
+        # Permute dimensions to (seq_len, batch_size, d_model) because the transformer expects (seq_len, batch_size, d_model)
+        src_projected = src_projected.permute(1, 0, 2) # shape: (seq_len, batch_size, d_model)
         output = self.transformer_encoder(src_projected, mask=mask)
-
+        # Permute dimensions back to (batch_size, seq_len, d_model)
+        output = output.permute(1, 0, 2) # shape: (batch_size, seq_len, d_model)
         return output # shape: (batch_size, seq_len, d_model)

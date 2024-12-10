@@ -60,7 +60,7 @@ def get_lr_schedule(optimizer, warmup_steps=4000):
 scheduler = get_lr_schedule(optimizer)
 
 
-# Print model summaries
+# Print model summaries ==============================================
 print("\nContext Encoder Architecture:")
 print(context_encoder)
 print("\nTotal parameters in Context Encoder:", sum(p.numel() for p in context_encoder.parameters()))
@@ -70,6 +70,7 @@ print(cfm_model)
 print("\nTotal parameters in CFM Model:", sum(p.numel() for p in cfm_model.parameters()))
 
 print("\nTotal parameters in both models:", sum(p.numel() for p in context_encoder.parameters()) + sum(p.numel() for p in cfm_model.parameters()))
+# =================================================================
 
 # DataLoader for training
 train_loader, scaler = create_data_loaders(DATA_DIR, batch_size)
@@ -115,7 +116,7 @@ def train_model(optimizer):
 
             # CONDITIONAL FLOW MODEL PASS ================================
             x1 = target_seq
-            t = torch.rand((x0.shape[0], 1), device=x0.device)
+            t = torch.rand((x0.shape[0], x0.shape[1], 1), device=x0.device)
             optimizer.zero_grad()
             loss = loss_fn(cfm_model, x0, x1, t, encoded_context)
             loss.backward()
