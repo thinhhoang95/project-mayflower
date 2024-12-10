@@ -119,12 +119,24 @@ def train_model(optimizer):
             t = torch.rand((x0.shape[0], x0.shape[1], 1), device=x0.device)
             optimizer.zero_grad()
             loss = loss_fn(cfm_model, x0, x1, t, encoded_context)
+
+            # Log loss to wandb
+            wandb.log({'loss': loss.item()})
+
             loss.backward()
             optimizer.step()
             
         print(f'Epoch {epoch+1}, Loss: {loss.item()}')
 
+import wandb
+
 if __name__ == '__main__':
+    wandb.init(project='mayflower',
+               config={
+                   'num_epochs': NUM_EPOCHS,
+                   'batch_size': batch_size,
+                   'architecture': 'ContextEncoder + CFMModel'
+               })
     print(f'Training model with {NUM_EPOCHS} epochs')
     train_model(optimizer)
-
+    wandb.finish()

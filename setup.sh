@@ -21,5 +21,11 @@ fi
 # Create output directory if it doesn't exist
 mkdir -p $CURRENT_DIR/output
 
+# Install dependencies
+pip install -r requirements.txt
+
+# Run wandb login
+wandb login
+
 # Run training script
 python train.py
